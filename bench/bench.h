@@ -9,6 +9,8 @@
 #include <unistd.h>
 #include <signal.h>
 #include <fcntl.h>
+#include <string.h>
+#include <errno.h>
 #include "sockets.h"
 #include "http.h"
 #include "log.h"

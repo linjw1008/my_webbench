@@ -48,7 +48,7 @@ int test_connection(const char* hostname, int port)
     int i = get_socket(hostname, port);
     if (i < 0)
     {
-        printf("Connect to %s:%d failed!\n", hostname, port);
+        LOGERR("Connect to %s:%d failed!\n", hostname, port);
         return i;
     }
     
@@ -83,7 +83,6 @@ int send_message(const char* hostname, int port, const char* message, int* bytes
         return 2;
     }
 
-
     if (http_version == HTTP_0_9)
     {
         if (shutdown(sock, SHUT_WR) == -1)
@@ -114,7 +113,6 @@ int send_message(const char* hostname, int port, const char* message, int* bytes
             else
             {
                 *bytes_number += ret;
-                //printf(buf);
             }
         }
     }

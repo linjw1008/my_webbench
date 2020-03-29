@@ -76,9 +76,9 @@ void get_http_request(host_info* hf, request_method rm, http_version http_versio
     /*
     TODO
     */
-    printf("-------------");
-    printf("Request message is:\n%s\n", request_message);
-    printf("-------------");
+    LOGMSG("----------------------------------------");
+    LOGMSG("Request message is:\n%s", request_message);
+    LOGMSG("----------------------------------------");
 }
 
 #ifdef _USE_MAIN_

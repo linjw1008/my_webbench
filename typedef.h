@@ -39,8 +39,6 @@ typedef struct
     int             cache;
     int             benchtime;
     host_info       host_info;
-    char            log_file_name[1000];
-    int             log_level;
 } configuration;
 
 //bench data

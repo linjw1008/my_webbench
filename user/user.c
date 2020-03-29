@@ -8,8 +8,7 @@ void print_usage(void)
             "  -w|--wait                Wait for reply from server.\n"
             "  -t|--time <sec>          Run benchmark for <sec> seconds.\n"
             "  -c|--clients <n>         Run <n> HTTP clients at once. Default one.\n"
-            "  -l|--log <n>             Log level. -1 for no log; 1 for ERROR; 2 for WARN; 3 for DEBUG; 4 for INFO.\n"
-            "  -9|--http09              Use HTTP/0.9 style requests.\n"
+            "  -9|--http09              Use HTTP/0.9 protocol.\n"
             "  -1|--http10              Use HTTP/1.0 protocol.\n"
             "  -2|--http11              Use HTTP/1.1 protocol.\n"
             "  --cache                  Use cache.\n"
@@ -58,7 +57,6 @@ int process_user_input(int argc, char** argv, configuration* conf)
         {"trace",   no_argument,        &conf->method,          METHOD_TRACE    },
         {"version", no_argument,        NULL,                   'V'             },
         {"clients", required_argument,  NULL,                   'c'             },
-        {"log",     required_argument,  NULL,                   'l'             },
         {0,         0,                  0,                       0              }
     };
     int options_index = 0;//parameter index
@@ -72,7 +70,7 @@ int process_user_input(int argc, char** argv, configuration* conf)
         return 2;
     }
 
-    while ((opt = getopt_long(argc, argv, "912Vwt:p:c:l:?h", long_options, &options_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "912Vwt:p:c:?h", long_options, &options_index)) != -1)
     {
         switch (opt)
         {
@@ -92,7 +90,7 @@ int process_user_input(int argc, char** argv, configuration* conf)
             break;
         case 'V':
             printf("%s\n", conf->software_version);
-            return 0;
+            return 1;
             break;
         case 't':
             conf->benchtime = atoi(optarg);
@@ -110,9 +108,6 @@ int process_user_input(int argc, char** argv, configuration* conf)
             break;
         case 'c':
             conf->clients_number = atoi(optarg);
-            break;
-        case 'l':
-            conf->log_level = atoi(optarg);
             break;
         default:
             printf("?? getopt returned character code 0x%02x ??\n", opt);
@@ -160,10 +155,6 @@ int process_user_input(int argc, char** argv, configuration* conf)
     {
         conf->benchtime = 1;
     }    
-
-    time = get_local_time();
-    sprintf(conf->log_file_name, "%04u_%02u_%02u_%02u_%02u_%02u.txt",
-             time.tm_year + 1900, time.tm_mon + 1, time.tm_mday, time.tm_hour, time.tm_min, time.tm_sec);
              
     return 0;
 }

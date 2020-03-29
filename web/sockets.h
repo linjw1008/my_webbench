@@ -9,6 +9,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "typedef.h"
+#include "log.h"
 
 int get_socket(const char* hostname, int port);
 int test_connection(const char* hostname, int port);

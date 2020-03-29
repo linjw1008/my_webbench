@@ -12,7 +12,6 @@ return:
     3: fork failed
     4: open pipe error
 */
-//need static???
 int run_bench(configuration* conf, bench_data* bd)
 {
     //0.define var
@@ -22,36 +21,25 @@ int run_bench(configuration* conf, bench_data* bd)
     FILE* f;
     char request_message[REQUEST_SIZE];
     int pid_list[conf->clients_number];
-    int log_level = conf->log_level;
-    int log_file;
-    //log
-    if (log_level >= 0)
-    {
-        log_file = open((const char*)(conf->log_file_name), O_WRONLY | O_CREAT | O_APPEND);
-        printf("log_file: %d\n", log_file);
-    }
     
     //1.test the host
     i = test_connection((const char*)conf->host_info.hostname, conf->host_info.port);
     if (i < 0) //connect failed!
     {
-        if (log_level >= 0)
-        {
-            log(log_file, ERROR, "Try connecting to host failed!\n");
-        }
+        LOGERR("\033[KTry connecting to host failed!");
         return 1;
     }
     
     //2.create the pipe
     if (pipe(pipedes) == -1)
     {
-        perror("Create pipe failed!");
+        LOGERR("\033[KCreate pipe failed! Error: %s", strerror(errno));
         return 2;
     }
     
     //3.get the request message
     get_http_request(&(conf->host_info), conf->method, conf->http_version, conf->cache, request_message);
-    printf("%s\n", request_message);
+    LOGMSG("\033[Kthe request is: \n%s", request_message);
 
     //4.create child processes
     for (i = 0; i < conf->clients_number; i++)
@@ -62,46 +50,27 @@ int run_bench(configuration* conf, bench_data* bd)
         {
             int j = 0;
             sleep(1);
-            printf("No.%d process fork failed!\n", i);
-            fflush(stdout);
+            LOGWARN("\033[KNo.%d process fork failed!", i);
 
-            //log
-            if (log_level >= 0)
-            {
-                log(log_file, ERROR, "No.%d process fork failed!\n", i);
-            }
-            /*TODO kill all children*/
+            /*kill all children*/
             //force kill, not elegant
             //kill(, SIGKILL);
             for (j = 0; j < i; j++)
             {
                 kill(pid_list[j], SIGKILL);
-                
-                //log
-                if (log_level >= 0)
-                {
-                    log(log_file, INFO, "Kill child process(pid: %d).\n", pid_list[j]);
-                }                
+                LOGMSG("\033[KKill child process(pid: %d).", pid_list[j]);                
             }
             return 3;
         }
         else if (pid == 0) //is child process
         {
-            //printf("No.%d client was created.\n", i);
-            //fflush(stdout);            
-            //log
-            if (log_level >= 0)
-            {
-                log(log_file, INFO, "No.%d client was created.\n", i);
-            }
+            LOGMSG("\033[KNo.%d client was created.", i);
             sleep(1);
             break;
         }
         else
         {
             pid_list[i] = pid;
-            //printf("Create pid: %d\n", pid);
-            //fflush(stdout);
         }
     }
 
@@ -116,34 +85,19 @@ int run_bench(configuration* conf, bench_data* bd)
 
         if (benchcore(conf, request_message, &bytes, &success, &fail) != 0)
         {
-            //log
-            if (log_level >= 0)
-            {
-                log(log_file, ERROR, "Pid %d: benchcore failed!\n", pid);
-            }
-            exit(1); //benchcore failed
+            ERROR(1, errno, "\033[KPid %d: benchcore failed!", pid);
         }
 
-
-        if (log_level >= 0)
-        {
-            log(log_file, INFO, "Pid %d: %d %d %d\n", pid, bytes, success, fail);
-        }
-
+        LOGMSG("\033[KPid %d results: bytes[%d], success[%d], fail[%d]", pid, bytes, success, fail);
+        
         f = fdopen(pipedes[1], "w");
         if (f == NULL)
         {
-            perror("open pipe for writing failed.");
-            //log
-            if (log_level >= 0)
-            {
-                log(log_file, ERROR, "Pid %d: open pipe for writing failed.\n", pid);
-            }
-            //return 4;
-            exit(2); //pipe failed
+            ERROR(2, errno, "\033[KPid %d: open pipe for writing failed.", pid);
         }
         close(pipedes[0]);
 
+        //send result to parent
         fprintf(f, "%d %d %d %d %d\n", bytes, success, fail, i, pid);
         fclose(f);
 
@@ -169,18 +123,13 @@ int run_bench(configuration* conf, bench_data* bd)
         f = fdopen(pipedes[0], "r");
         if (f == NULL)
         {
-            perror("open pipe for writing failed.");
-        
-            if (log_level >= 0)
-            {
-                log(log_file, ERROR, "open pipe for writing failed.\n", pid, bytes, success, fail);
-            }
-
+            LOGERR("\033[Kopen pipe for writing failed.");
             return 4;
         }
         close(pipedes[1]);
 
-        //set buffer
+        //set buffer type
+        //no buf
         setvbuf(f, NULL, _IONBF, 0);
 
         //show progress bar
@@ -190,11 +139,6 @@ int run_bench(configuration* conf, bench_data* bd)
         while (1)
         {            
             pid = wait(&child_status);
-            if (i != 0) //clear the last progress bar
-            {
-                //printf("\r\033[K");
-                //fflush(stdout);
-            }
 
             if (pid == -1)  //no child process
             {
@@ -207,48 +151,25 @@ int run_bench(configuration* conf, bench_data* bd)
                 switch (child_status) 
                 {
                 case 0: //success
-                    //printf("No.%d client(pid %d) succeeded.\n", i, pid);
-                    //fflush(stdout);
-
+                    //receive data from child
                     ret = fscanf(f, "%d %d %d %d %d\n", &bytes, &success, &fail, &child_index, &child_pid);
                     if (ret < 5)
                     {
-                        printf("Some of the children died.\n");
-                        fflush(stdout);
-                        if (log_level >= 0)
-                        {
-                            log(log_file, ERROR, "Some of the children died.\n");
-                        }
+                        LOGERR("\033[KSome of the children died.");
                         break;
                     }
 
-                    if (log_level >= 0)
-                    {
-                        log(log_file, INFO, "Receive message from No.%d client(pid: %d). The status is: %d.\n", child_index, child_pid, child_status);
-                    }
-    
-                    //printf("Receive message from No.%d client(pid: %d). The status is: %d.\n", child_index, child_pid, child_status);
-                    //fflush(stdout);
+                    LOGMSG("\033[KReceive message from No.%d client(pid: %d). The status is: %d.", child_index, child_pid, child_status);
 
                     total_bytes += bytes;
                     total_success += success;
                     total_fail += fail;
                     break;
                 case 1: //benchcore failed
-                    printf("No.%d client(pid %d) failed. Reason: Benchcore failed.\n", i, pid);
-                    fflush(stdout);
-                    if (log_level >= 0)
-                    {
-                        log(log_file, ERROR, "No.%d client(pid %d) failed. Reason: Benchcore failed.\n", i, pid);
-                    }
+                    LOGERR("\033[KNo.%d client(pid %d) failed. Reason: Benchcore failed.\n", i, pid);
                     break;
                 case 2: //pipe failed
-                    printf("No.%d client(pid %d) failed. Reason: Pipe failed.\n", i, pid);
-                    fflush(stdout);
-                    if (log_level >= 0)
-                    {
-                        log(log_file, ERROR, "No.%d client(pid %d) failed. Reason: Pipe failed.\n", i, pid);
-                    }                    
+                    LOGERR("\033[KNo.%d client(pid %d) failed. Reason: Pipe failed.\n", i, pid);              
                     break;
 
                 default:
@@ -262,28 +183,19 @@ int run_bench(configuration* conf, bench_data* bd)
         
         fclose(f);
 
-        printf("total_success: %d total_fail: %d total_bytes: %d\n", total_success, total_fail, total_bytes);
+        LOGMSG("\033[Ktotal_success: %d total_fail: %d total_bytes: %d\n", total_success, total_fail, total_bytes);
         bd->total_bytes = total_bytes;
         bd->total_fail = total_fail;
         bd->total_success = total_success;
         bd->time = conf->benchtime;
-        bd->clients_num = conf->clients_number;
-        
-        if (log_level >= 0)
-        {
-            log(log_file, ERROR, "total_success: %d total_fail: %d total_bytes: %d\n", total_success, total_fail, total_bytes);
-        }     
+        bd->clients_num = conf->clients_number;        
     }
-
-    close(log_file);
     
     return 0;
 }
 
 void alarm_handler(int signal)
 {
-    //printf("Time out! %d\n", getpid());
-    //fflush(stdout);
     time_out = 1;
 }
 
@@ -350,13 +262,13 @@ void print_bench_data(bench_data* bd)
     {
         return;
     }
-
+    LOGMSG("show results: ");
     printf("The bench results are:\n");
     printf("Bench time: \t%ds\n", bd->time);
     printf("Clients number: \t%d\n", bd->clients_num);
     printf("Success: \t%d[total], \t%.2f[per client]\n", bd->total_success, bd->success_per_client);
     printf("Fail: \t%d[total], \t%.2f[per client]\n", bd->total_fail, bd->fail_per_client);
-    printf("Speed: \t%.2fbytes/s, \t%.2fpages/min\n", bd->bytes_per_sec, bd->pages_per_min);
+    printf("Speed: \t%.2fbytes/s, \t%.2fMB/s, \t%.2fpages/min\n", bd->bytes_per_sec, bd->bytes_per_sec/1024.0/1024.0, bd->pages_per_min);
     fflush(stdout);
 }
 
@@ -411,7 +323,7 @@ void show_collect_data_progress_bar(int index, int total)
         bar[j] = '#';
     }
     last_i = i + 1;
-    printf("[Collecting results...][%-40s][No.%d client of %d in total][%c]\r", bar, index, total, label[index % 4]);
+    printf("[Collecting results...][%-40s][No.%d client of %d in total][%c]\r", bar, index + 1, total, label[index % 4]);
     if (index == total - 1)
     {
         printf("\n");

@@ -4,27 +4,33 @@
 #include "user.h"
 #include "bench.h"
 #include "typedef.h"
+#include "log.h"
 
 //main function
 int main(int argc, char** argv)
 {
+    LOGMSG("start");
+
     //0.define var
-    configuration conf;
+    configuration conf = {.software_version = "1.0"};
     bench_data bd;
     int ret = 0;
 
     //1.proccess input
-    process_user_input(argc, argv, &conf);
+    LOGMSG("process input parameters.");
+    ret = process_user_input(argc, argv, &conf);
+    if (ret == 1 || ret == 2)
+        return 0;
 
     //2.run bench
+    LOGMSG("start bench.");
     ret = run_bench(&conf, &bd);
 
     //3.show result
     switch (ret)
     {
     case 0:
-        printf("run sucess\n");
-        fflush(stdout);
+        LOGMSG("run successfully!");
         count_bench_data(&bd);
         print_bench_data(&bd);
         break;
@@ -32,7 +38,7 @@ int main(int argc, char** argv)
     case 2:            
     case 3:            
     case 4:
-        printf("run failed!\n");
+        LOGERR("run failed!");
         fflush(stdout);
         break;
 
@@ -40,5 +46,6 @@ int main(int argc, char** argv)
         break;
     }
 
+    LOGMSG("exit...");
     return 0;
 }

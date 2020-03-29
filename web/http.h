@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "typedef.h"
+#include "log.h"
 
 #define REQUEST_SIZE    2048
 

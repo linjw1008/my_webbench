@@ -1,38 +1,23 @@
 #ifndef _LOG_H_
 #define _LOG_H_
 
+#include <stdarg.h>
 #include <stdio.h>
-#include <unistd.h>
-#include <string.h>
-#include <fcntl.h>
 
-#define ERROR   1
-#define WARN    2
-#define DEBUG   3
-#define INFO    4
+#define LOG_DEBUG   0
+#define LOG_MSG     1
+#define LOG_WARN    2
+#define LOG_ERR     3
 
+void print_log(int log_type, const char *msg);
+void logx(int log_type, const char *fmt, ...);
+void error(int status, int err, const char *fmt, ...);
 
-#define log(file, level, format, ...)\
-        {\
-            char buf[1024];\
-            switch (level)\
-            {\
-            case ERROR:\
-                sprintf(buf, "ERROR: Function: %s, Line: %d, ---> "format"\n", __FUNCTION__, __LINE__, ##__VA_ARGS__);\
-                break;\
-            case WARN:\
-                sprintf(buf, "WARN: Function: %s, Line: %d, ---> "format"\n", __FUNCTION__, __LINE__, ##__VA_ARGS__);\
-                break;\
-            case DEBUG:\
-                sprintf(buf, "DEBUG: Function: %s, Line: %d, ---> "format"\n", __FUNCTION__, __LINE__, ##__VA_ARGS__);\
-                break;\
-            case INFO:\
-                sprintf(buf, "INFO: Function: %s, Line: %d, ---> "format"\n", __FUNCTION__, __LINE__, ##__VA_ARGS__);\
-                break;\
-            default:\
-                break;\
-            }\
-            write(file, buf, strlen(buf));\
-        }
+#define LOGDEBUG(fmt, ...)  logx(LOG_DEBUG, "in %s: "fmt, __FUNCTION__, ##__VA_ARGS__)
+#define LOGMSG(fmt, ...)    logx(LOG_MSG,   "in %s: "fmt, __FUNCTION__, ##__VA_ARGS__)
+#define LOGWARN(fmt, ...)   logx(LOG_WARN,  "in %s: "fmt, __FUNCTION__, ##__VA_ARGS__)
+#define LOGERR(fmt, ...)    logx(LOG_ERR,   "in %s: "fmt, __FUNCTION__, ##__VA_ARGS__)
+
+#define ERROR(status, err, fmt, ...) error(status, err, "ERROR in %s: "fmt, __FUNCTION__, ##__VA_ARGS__)
 
 #endif
